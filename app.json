@@ -4,7 +4,7 @@
     "slug": "wbgt-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/wbgt-app-icon.png",
     "scheme": "wbgtapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -12,8 +12,14 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.hoshino.wbgtApp",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/wbgt-app-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
@@ -37,6 +43,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5db9a98d-9142-48a6-a278-425f61c97156"
+      }
     }
   }
 }
