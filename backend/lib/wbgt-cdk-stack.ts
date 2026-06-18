@@ -1,13 +1,18 @@
-import { Stack, StackProps, Duration, RemovalPolicy } from "aws-cdk-lib";
+import { Stack, StackProps, Duration, RemovalPolicy, CfnOutput } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as nodejs from "aws-cdk-lib/aws-lambda-nodejs";
-import * as iam from "aws-cdk-lib/aws-iam";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as integrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as cwActions from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+
+const ALARM_NOTIFICATION_EMAIL = "xenepic.takku@gmail.com";
 
 export class WbgtCdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -24,6 +29,14 @@ export class WbgtCdkStack extends Stack {
           allowedMethods: [s3.HttpMethods.GET],
           allowedOrigins: ["*"], // 必要に応じて限定
           allowedHeaders: ["*"],
+        },
+      ],
+      lifecycleRules: [
+        {
+          // wbgt/history/{yyyymmdd_HH}.json の履歴ファイルのみ対象（wbgt/latest.jsonは対象外）
+          id: "ExpireHistoricalWbgtJson",
+          prefix: "wbgt/history/",
+          expiration: Duration.days(90),
         },
       ],
     });
@@ -68,6 +81,20 @@ export class WbgtCdkStack extends Stack {
       targets: [new targets.LambdaFunction(fetchFn)],
     });
 
+    // 4.5) fetch-wbgt 失敗時のアラーム通知（SNSメール）
+    const alarmTopic = new sns.Topic(this, "WbgtAlarmTopic");
+    alarmTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(ALARM_NOTIFICATION_EMAIL)
+    );
+    const fetchFailureAlarm = new cloudwatch.Alarm(this, "FetchWbgtFailureAlarm", {
+      metric: fetchFn.metricErrors({ period: Duration.hours(1) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      alarmDescription: "fetch-wbgt Lambda がエラーで終了した",
+    });
+    fetchFailureAlarm.addAlarmAction(new cwActions.SnsAction(alarmTopic));
+
     // 5) API Gateway HTTP API（安価）
     const httpApi = new apigwv2.HttpApi(this, "WbgtHttpApi");
     httpApi.addRoutes({
@@ -90,7 +117,7 @@ export class WbgtCdkStack extends Stack {
     });
 
     // 出力（デプロイ後にコンソールに表示）
-    new (require("aws-cdk-lib").CfnOutput)(this, "ApiUrl", {
+    new CfnOutput(this, "ApiUrl", {
       value: httpApi.apiEndpoint + "/wbgt/v1/latest",
     });
   }

@@ -1,17 +1,52 @@
-// import * as cdk from 'aws-cdk-lib';
-// import { Template } from 'aws-cdk-lib/assertions';
-// import * as WbgtCdk from '../lib/wbgt-cdk-stack';
+import * as cdk from "aws-cdk-lib";
+import { Template } from "aws-cdk-lib/assertions";
+import { WbgtCdkStack } from "../lib/wbgt-cdk-stack";
 
-// example test. To run these tests, uncomment this file along with the
-// example resource in lib/wbgt-cdk-stack.ts
-test('SQS Queue Created', () => {
-//   const app = new cdk.App();
-//     // WHEN
-//   const stack = new WbgtCdk.WbgtCdkStack(app, 'MyTestStack');
-//     // THEN
-//   const template = Template.fromStack(stack);
+function synth() {
+  const app = new cdk.App();
+  const stack = new WbgtCdkStack(app, "TestStack");
+  return Template.fromStack(stack);
+}
 
-//   template.hasResourceProperties('AWS::SQS::Queue', {
-//     VisibilityTimeout: 300
-//   });
+test("S3バケットに履歴ファイル用のライフサイクルルールがある", () => {
+  const template = synth();
+  template.hasResourceProperties("AWS::S3::Bucket", {
+    LifecycleConfiguration: {
+      Rules: [
+        {
+          Prefix: "wbgt/history/",
+          Status: "Enabled",
+        },
+      ],
+    },
+  });
+});
+
+test("fetch-wbgt失敗時のCloudWatch Alarmが定義されている", () => {
+  const template = synth();
+  template.resourceCountIs("AWS::CloudWatch::Alarm", 1);
+  template.hasResourceProperties("AWS::CloudWatch::Alarm", {
+    ComparisonOperator: "GreaterThanOrEqualToThreshold",
+    Threshold: 1,
+  });
+});
+
+test("SNSトピックにメール通知のサブスクリプションがある", () => {
+  const template = synth();
+  template.hasResourceProperties("AWS::SNS::Subscription", {
+    Protocol: "email",
+    Endpoint: "xenepic.takku@gmail.com",
+  });
+});
+
+test("EventBridgeのスケジュールがJST 5/11/17時相当のUTCになっている", () => {
+  const template = synth();
+  template.hasResourceProperties("AWS::Events::Rule", {
+    ScheduleExpression: "cron(0 20,2,8 * * ? *)",
+  });
+});
+
+test("API Gatewayに/wbgt/latestと/wbgt/v1/latestの両ルートがある", () => {
+  const template = synth();
+  template.resourceCountIs("AWS::ApiGatewayV2::Route", 2);
 });

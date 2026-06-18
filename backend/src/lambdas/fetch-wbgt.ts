@@ -5,7 +5,7 @@ const s3 = new S3Client({});
 const BUCKET = process.env.BUCKET_NAME!;
 const KEY_PREFIX = process.env.OBJECT_KEY_PREFIX ?? "wbgt";
 
-function toJstDate(d: Date) {
+export function toJstDate(d: Date) {
   return new Date(d.getTime() + 9 * 60 * 60 * 1000);
 }
 
@@ -16,7 +16,7 @@ function ymd(date: Date) {
   return { y, m, d };
 }
 
-function buildCandidateUrls(nowJst: Date) {
+export function buildCandidateUrls(nowJst: Date) {
   const { y, m, d } = ymd(nowJst);
   // 今日の 17, 10, 05 の順で新しい方からチェック
   const todays = [17, 10, 5].map(
@@ -41,7 +41,7 @@ async function tryFetchCsv(url: string): Promise<string | null> {
   throw new Error(`WBGT CSV fetch failed: ${res.status} ${res.statusText}`);
 }
 
-function extractPublishedAtFromUrl(url: string): {
+export function extractPublishedAtFromUrl(url: string): {
   publishedAtJst: string | null;
   stamp: string | null;
 } {
@@ -54,7 +54,7 @@ function extractPublishedAtFromUrl(url: string): {
   return { publishedAtJst, stamp };
 }
 
-function csvToJson(csv: string) {
+export function csvToJson(csv: string) {
   const rows = csv
     .split("\n")
     .map((l) => l.trim())
@@ -128,7 +128,7 @@ export const handler = async () => {
     2
   );
 
-  const datedKey = `${KEY_PREFIX}/${stamp ?? "unknown"}.json`;
+  const datedKey = `${KEY_PREFIX}/history/${stamp ?? "unknown"}.json`;
   const latestKey = `${KEY_PREFIX}/latest.json`;
 
   await s3.send(
