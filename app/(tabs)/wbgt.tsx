@@ -6,53 +6,14 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from "react-native";
-import * as Location from "expo-location";
 import * as utils from "../../utils/utils";
-import * as api from "../../api/api";
 import { GeoService } from "../../services/GeoService";
 import { WeatherService } from "../../services/WeatherService";
-
-function getWbgtFromCity(
-  wbgtData: WbgtData[],
-  pref: string,
-  city: string,
-  time: string
-) {
-  const matchCityList = wbgtData.filter(
-    (item) => item.prefectureName === utils.getShortName(pref)
-  );
-
-  if (matchCityList.length !== 0) {
-    const key = `maxWbgt${parseInt(time)}` as keyof WbgtData;
-
-    const wbgtList = matchCityList.reduce<Record<string, number>>(
-      (acc, curr) => {
-        const wbgt = curr[key] as Record<string, number>;
-        return {
-          ...acc,
-          ...wbgt,
-        };
-      },
-      {}
-    );
-
-    let wbgt = wbgtList[city ?? ""] ?? wbgtList[utils.getShortName(city ?? "")];
-    if (!wbgt) {
-      const values = Object.values(wbgtList);
-      wbgt =
-        values.reduce((sum: number, val: any) => sum + Number(val), 0) /
-        values.length;
-    }
-
-    return wbgt;
-  } else {
-    return null;
-  }
-}
 
 export default function HomeScreen() {
   const [locationPref, setLocationPref] = useState<string | null>(null);
   const [wbgt, setWbgt] = useState<number | null>(null);
+  const [publishedAtJst, setPublishedAtJst] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,19 +35,8 @@ export default function HomeScreen() {
       const {
         pref,
         city,
-        coords: { latitude, longitude },
+        // coords: { latitude, longitude },
       } = geocordResult.data;
-
-      // 天候情報取得
-      const weatherResult = await WeatherService.getWeather(
-        latitude,
-        longitude
-      );
-      if (!weatherResult.ok) {
-        setErrorMsg(weatherResult.message);
-        return;
-      }
-      const { temperature, humidity } = weatherResult.data;
 
       // 位置情報設定
       setLocationPref(`${pref} ${city}`);
@@ -95,22 +45,19 @@ export default function HomeScreen() {
       const { date, time } = utils.getLatestWbgtDateTime();
 
       // WBGT情報取得
-      const wbgtResult = await api.getWbgtData();
+      const wbgtResult = await WeatherService.fetchWbgtLatestWithCache(
+        pref,
+        city,
+        time
+      );
       if (!wbgtResult.ok) {
         setErrorMsg(wbgtResult.message);
         return;
       }
-      const wbgtData = wbgtResult.data;
 
-      // 現在地のWBGTを取得
-      const wbgt = getWbgtFromCity(wbgtData, pref, city, time);
-      if (wbgt == null) {
-        setErrorMsg("WBGTデータが見つかりませんでした");
-        return;
-      }
-
-      // WBGT設定
-      setWbgt(wbgt);
+      // WBGTと設定
+      setWbgt(wbgtResult.wbgt);
+      setPublishedAtJst(wbgtResult.publishedAtJst);
     })();
   }, []);
 
@@ -147,9 +94,9 @@ export default function HomeScreen() {
       {/* フッター */}
       {locationPref && wbgt !== null && (
         <View style={styles.footer}>
-          <Text
-            style={styles.time}
-          >{`（${utils.getDisplayDate()} 発表）`}</Text>
+          <Text style={styles.time}>{`（${
+            publishedAtJst ? utils.formatPublishedAtJst(publishedAtJst) : "----"
+          } 発表）`}</Text>
         </View>
       )}
     </SafeAreaView>

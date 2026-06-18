@@ -1,0 +1,94 @@
+# wbgt-app
+
+現在地の暑さ指数（WBGT）と詳細な気象情報を表示する Expo (React Native) アプリ。
+
+## 仕様（整理版）
+
+### 機能要件
+
+**WBGT画面（メイン）**
+- 起動時に現在地（緯度経度→都道府県・市区町村）を取得し、位置情報の利用許可を求める。
+- 現在時刻から直近の「発表区分」（5時/10時/17時のいずれか）を判定し、その区分に対応するWBGT予測値を取得・表示する。
+  - 5:00〜9:59 → 当日5時発表分
+  - 10:00〜16:59 → 当日10時発表分
+  - 17:00〜翌4:59 → 当日（または前日）17時発表分。17時台以降は「本日」、深夜0〜4時台は「明日」表記。
+- WBGT値に応じて5段階の危険度と対応する背景色を表示する: 21未満=安全（緑） / 21〜24=注意（黄） / 25〜27=警戒（オレンジ） / 28〜30=厳重警戒（赤） / 31以上=危険（紫）。
+- データの発表日時（JST）を画面下部に表示する。
+- 通信失敗時は直前に取得できた値をローカルキャッシュ（端末内）から表示し、初回起動かつ通信失敗の場合のみエラーメッセージを表示する。
+- 位置情報の利用が許可されない場合はエラーメッセージを表示する。
+
+**Weather画面（気象詳細）**
+- 同じ現在地に対して、48時間分の時間別気温・降水量・天気を横スクロールの折れ線グラフ＋アイコン帯で表示する。
+- 週間（7日分）の最高/最低気温・天気アイコン・降水量を一覧表示する。
+- 土曜/日曜の日付は色分け表示する。
+
+**全体**
+- 通信エラー・位置情報エラーなどはユーザーに分かる日本語メッセージで表示する（クラッシュさせない）。
+- オフライン/API障害時でも、WBGT画面だけは直前データで一定の体験を維持する（Weather画面はキャッシュなし、毎回オンライン取得が前提）。
+
+### データソース・更新タイミング
+
+- WBGT予測データは環境省 熱中症予防情報サイトが1日3回（5時・10時・17時頃、JST）発表するCSVが正本。
+- 自前バックエンドがこのCSVを定期取得しS3に保存、アプリはそのS3データをAPI経由で参照する（環境省サイトに直接アクセスはしない）。
+- 気象詳細（気温・降水・週間予報）はOpen-Meteoから都度取得しており、自前バックエンドは介さない。
+
+### 非機能要件 / 制約
+
+- 対応OS: iOS / Android（Expoでビルド、EASでapp-bundle配布）。Web出力も技術的には可能（react-native-web）だが主用途ではない。
+- 位置情報の許可が必須（Android: `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION`）。
+- 自前APIはAPI Gateway + Lambda + S3構成（サーバーレス、運用コストほぼ無し）。CDKで管理されているが、CDKソースはこのリポジトリには含まれない（別管理、要再確認）。
+- すべてのAPI呼び出しは `Result<T>` 判別ユニオン（`{ok:true,data}` / `{ok:false,message}`）で結果を扱う方針。
+
+## 技術スタック
+
+- Expo SDK 53 / React Native 0.79 / React 19、Expo Router（file-based routing）でタブ画面を構成
+- TypeScript、グローバル型は `types/*.d.ts`（ambient、import不要）
+- `react-native-chart-kit` で気温の折れ線グラフ
+- `@react-native-async-storage/async-storage` でWBGT取得失敗時のフォールバック用キャッシュ
+- `expo-location` で現在地の緯度経度取得・逆ジオコーディング
+
+## 画面構成
+
+- `app/_layout.tsx` — ルートレイアウト（フォント読込、テーマ）
+- `app/(tabs)/_layout.tsx` — タブナビゲーション（WBGT / Weather の2タブ）
+- `app/(tabs)/wbgt.tsx` — メイン画面。現在地のWBGT値・危険度レベル・発表時刻を表示
+- `app/(tabs)/weather-info.tsx` — 気象詳細画面。1時間ごとの気温グラフ（横スクロール、固定Y軸）、降水/天気アイコン帯、週間予報カード
+
+## データフロー
+
+1. `GeoService.checkLocationPermission()` → `GeoService.getGeocode()` で現在地の都道府県・市区町村・緯度経度を取得（`expo-location` の `reverseGeocodeAsync` を使用）。結果はメモリにキャッシュ（`GeoService` の static フィールド）。
+2. WBGTタブ: `utils.getLatestWbgtDateTime()` で直近の発表時刻（05/10/17時のいずれか）を判定 → `WeatherService.fetchWbgtLatestWithCache(pref, city, time)` を呼び、自前のAWS API (`/wbgt/v1/latest`) からWBGTデータを取得。取得失敗時は AsyncStorage のキャッシュ値にフォールバック。
+3. Weatherタブ: `WeatherService.getHourlyWeather` / `getDailyWeather` で Open-Meteo API (`api.open-meteo.com`) から直接、時間別・日別の気温・降水・天気コードを取得。
+
+## API
+
+- 自前API（WBGT用）: `Constants.expoConfig.extra.apiBaseUrl`（`app.config.ts` で設定、AWS API Gateway）+ `/wbgt/v1/latest`。レスポンス型は `types/wbgt-api.d.ts`（`WbgtApiResponse`）。都道府県別・地点別の `maxWbgt5/10/17`（時刻別の最高WBGT予測マップ）を含む。
+- 外部API（気象用）: Open-Meteo（`https://api.open-meteo.com/v1/forecast`）を `WeatherService` から直接呼び出し（API Gatewayを経由しない）。
+
+### バックエンド構成（AWS、リージョン: ap-northeast-1）
+
+- API Gateway（API ID: `xh4o6krnn2`）に `/wbgt/v1/latest/GET` と `/wbgt/latest/GET` の2ルートがあり、両方とも同一の `get-wbgt` Lambda に統合されている（後者は旧パスの互換用と思われる）。
+- `get-wbgt` Lambda（`src/lambdas/get-wbgt.ts`）は読み取り専用: S3バケット（環境変数 `BUCKET_NAME`）の `${OBJECT_KEY_PREFIX ?? "wbgt"}/latest.json`（=`wbgt/latest.json`）をそのまま読んで返すだけ。CORS全許可、エラー時は500 + `{ok:false,message}`。
+- `fetch-wbgt` Lambda（`src/lambdas/fetch-wbgt.ts`）がデータの取得・生成元。おそらくEventBridgeの定期実行（5/10/17時頃）でトリガーされる想定だが、トリガー設定自体は未確認。
+  - データソース: 環境省熱中症予防情報サイトのCSV `https://www.wbgt.env.go.jp/alert/dl/{年}/alert_{yyyymmdd}_{hh}.csv`
+  - JST現在時刻から本日17時→10時→5時→前日17時の順に候補URLを作り、最初に200で取れたCSVを採用（404はスキップして次候補、その他エラーは例外）
+  - CSVは `InternalFlag` 行を境にヘッダ/データを分離してパースし、地点ごとに `maxWbgt5/10/17`（`地点名:値` 形式のセルをパース）を構築
+  - ファイル名の `_HH` から `publishedAtJst` を算出
+  - S3に `wbgt/{yyyymmdd_HH}.json`（履歴）と `wbgt/latest.json`（最新、`get-wbgt` が読む）の2つを書き込む
+  - 注意: 発表時刻（5/10/17時）の判定ロジックが `utils/utils.ts` の `getLatestWbgtDateTime()` とバックエンド側で重複実装されている。
+- インフラはAWS CDKで管理（スタック名 `WbgtCdkStack`、Lambda論理ID例: `FetchWbgtFnCB4FCB74`）。CDKのソース自体はこのリポジトリには無く別管理。
+- `fetch-wbgt` の起動はEventBridgeのcronルール `0 20,2,8 * * ? *`（UTC）= JST **5:00 / 11:00 / 17:00**。
+  - **既知の時刻ズレ**: フロントの `getLatestWbgtDateTime()` は10:00〜16:59を `time:"10"` として扱うが、バックエンドの10時データ取得は実際には **JST 11:00** 実行のため、10:00〜11:00の間はS3の `latest.json` がまだ前回（5時 or 前日17時）データのままになる可能性がある。
+
+## 型定義の方針
+
+- `types/global.d.ts`: 共通の `Result<T>` 型（成功/失敗の判別ユニオン）、`GeocodeResult`
+- `types/services.d.ts`: WBGT関連の型（`WbgtTime`, `WbgtData` など）— `wbgt-api.d.ts` と重複あり
+- `types/api.d.ts`: Open-Meteo由来の `HourlyForecast` / `DailyForecast`
+- `types/wbgt-api.d.ts`: 自前WBGT APIのレスポンス型
+
+## 既知の課題（リファクタ前の現状実装メモ）
+
+- フロントの発表時刻判定（`getLatestWbgtDateTime`）とバックエンドのcronスケジュール（JST 5:00/11:00/17:00）の間に10時台のズレがある（前述）。
+- バックエンド（CDK）のソースがこのリポジトリに含まれておらず、運用・改修の見通しが悪い。
+- `weather-info.tsx` のグラフ描画はマジックナンバー（座標オフセット等）が多く、`react-native-chart-kit` の制約を手動調整で回避している。

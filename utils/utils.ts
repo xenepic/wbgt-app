@@ -28,58 +28,24 @@ export const getLatestWbgtDateTime = (): { date: Date; time: WbgtTime } => {
 };
 
 /**
- * 最新のWBGTデータCSVのURLと対象日・時刻を返す
+ * WBGTデータの発表時刻を人間が読みやすい形式に変換
+ * @param publishedAtJst ISO8601形式の日時文字列（例: "2025-08-10T17:00:00+09:00"）
+ * @returns 例: "2025年8月10日 17:00"
  */
-// export const getLatestWbgtUrl = (): {
-//   date: string;
-//   time: WbgtTime;
-//   url: string;
-// } => {
-//   const { date, time } = getLatestWbgtDateTime();
-//   const pad = (n: number) => n.toString().padStart(2, "0");
-//   const dateStr = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(
-//     date.getDate()
-//   )}`;
-//   const url = `https://www.wbgt.env.go.jp/alert/dl/${dateStr.slice(
-//     0,
-//     4
-//   )}/alert_${dateStr}_${time}.csv`;
+export const formatPublishedAtJst = (publishedAtJst: string): string => {
+  if (!publishedAtJst) return "";
 
-//   return { date: dateStr, time, url };
-// };
+  const date = new Date(publishedAtJst);
 
-/**
- * 最新のWBGTデータCSVのURLと対象日・時刻を返す
- */
-export const getLatestWbgtUrl = (): {
-  date: string;
-  time: WbgtTime;
-  url: string;
-} => {
-  const { date, time } = getLatestWbgtDateTime();
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  const dateStr = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(
-    date.getDate()
-  )}`;
-  const url = `https://www.wbgt.env.go.jp/alert/dl/${dateStr.slice(
-    0,
-    4
-  )}/alert_${dateStr}_${time}.csv`;
-
-  return { date: dateStr, time, url };
-};
-
-/**
- * 最新WBGT発表時刻の人間向け表示用（例: 2025年7月26日 17:00）
- */
-export const getDisplayDate = (): string => {
-  const { date, time } = getLatestWbgtDateTime();
+  // 年月日と時刻を取得
   const year = date.getFullYear();
-  const month = date.getMonth() + 1;
+  const month = date.getMonth() + 1; // 0始まりなので+1
   const day = date.getDate();
-  const timeLabel = `${parseInt(time, 10)}:00`;
 
-  return `${year}年${month}月${day}日 ${timeLabel}`;
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+
+  return `${year}年${month}月${day}日 ${hours}:${minutes}`;
 };
 
 export const getWbgtLevel = (value: number) => {

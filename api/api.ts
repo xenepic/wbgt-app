@@ -1,64 +1,39 @@
 import * as Location from "expo-location";
-import * as utils from "../utils/utils";
+import Constants from "expo-constants";
 
-const getWeather = async (latitude: number, longitude: number) => {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m&timezone=Asia%2FTokyo`;
+// export type Result<T> = { ok: true; data: T } | { ok: false; message: string };
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("気象情報の取得に失敗しました");
+const apiBaseUrl =
+  (Constants.expoConfig?.extra as any)?.apiBaseUrl ??
+  (Constants.manifest?.extra as any)?.apiBaseUrl;
 
-  const json = await res.json();
-  return {
-    temperature: json.current.temperature_2m,
-    humidity: json.current.relative_humidity_2m,
-  };
-};
+function timeoutFetch(input: RequestInfo, init: RequestInit = {}, ms = 8000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(id)
+  );
+}
 
-/**
- * 最新のWBGTデータをCSVから取得・解析し、配列として返す。
- *
- * @returns WBGTデータの配列を含むResultオブジェクト
- */
-export const getWbgtData = async (): Promise<Result<WbgtData[]>> => {
+export async function fetchAwsApi<T>(
+  url: string,
+  timeoutMs = 8000
+): Promise<Result<T>> {
   try {
-    const { date, time, url: csvUrl } = utils.getLatestWbgtUrl();
-    const response = await fetch(csvUrl);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const fetchUrl = `${apiBaseUrl}${url}`;
+    const res = await timeoutFetch(fetchUrl, {}, timeoutMs);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const csvText = await response.text();
-    const rawData = csvText.split("\n").map((line) => line.split(","));
-    const internalFlagIndex = rawData.findIndex((d) => d[0] === "InternalFlag");
+    const json = (await res.json()) as T;
 
-    const data = rawData
-      .slice(internalFlagIndex + 2)
-      .filter((d) => d.length > 2)
-      .map((d) => {
-        const result: any = {
-          areaName: d[0],
-          prefectureName: d[4],
-        };
-        [10, 17, 5].forEach((t, i) => {
-          result[`maxWbgt${t}`] = {};
-          if (d[8 + i]) {
-            d[8 + i].split("/").forEach((entry) => {
-              const [place, val] = entry.split(":");
-              result[`maxWbgt${t}`][place] = parseInt(val);
-            });
-          }
-        });
-        return result;
-      });
-    return {
-      ok: true,
-      data,
-    };
+    return { ok: true, data: json };
   } catch (e: any) {
     return {
       ok: false,
-      message: "WBGTデータ取得に失敗しました: " + e.message,
+      message: `API呼び出しに失敗しました: ${e?.message ?? e}`,
     };
   }
-};
+}
 
 /**
  * ユーザーに位置情報の取得許可をリクエストし、結果を返す。

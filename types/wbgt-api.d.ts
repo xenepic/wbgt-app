@@ -1,4 +1,4 @@
-type WbgtTime = "05" | "10" | "17";
+// types/wbgt-api.d.ts
 type WbgtMap = Record<string, number>;
 
 interface WbgtData {
@@ -14,3 +14,21 @@ interface WbgtData {
   targetDate1Flag: string;
   targetDate2Flag: string;
 }
+
+interface WbgtApiResponse {
+  sourceUrl: string;
+  publishedAtJst: string;
+  updatedAtJst: string; // ISO
+  items: WbgtData[];
+}
+
+type WeatherServiceWbgtResponse =
+  | {
+      ok: false;
+      message: string;
+    }
+  | {
+      ok: true;
+      wbgt: number;
+      publishedAtJst: string;
+    };
