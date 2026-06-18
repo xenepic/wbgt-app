@@ -76,7 +76,9 @@
   - ファイル名の `_HH` から `publishedAtJst` を算出
   - S3に `wbgt/{yyyymmdd_HH}.json`（履歴）と `wbgt/latest.json`（最新、`get-wbgt` が読む）の2つを書き込む
   - 注意: 発表時刻（5/10/17時）の判定ロジックが `utils/utils.ts` の `getLatestWbgtDateTime()` とバックエンド側で重複実装されている。
-- インフラはAWS CDKで管理（スタック名 `WbgtCdkStack`、Lambda論理ID例: `FetchWbgtFnCB4FCB74`）。CDKのソース自体はこのリポジトリには無く別管理。
+- インフラはAWS CDKで管理（スタック名 `WbgtCdkStack`、Lambda論理ID例: `FetchWbgtFnCB4FCB74`）。CDKソースは本リポジトリの `backend/`（旧 `wbgt-cdk` リポジトリをコード統合、git履歴は持たず移植）。フロントとは独立した`package.json`/`node_modules`を持つ（依存衝突回避のためnpm workspacesには参加しない）。
+  - 操作: `cd backend && npm install` → `npx cdk synth` / `npx cdk diff` / `npx cdk deploy`（deployはAWS認証情報が必要、実行前に差分を必ず確認する）
+  - テスト: `cd backend && npx jest`
 - `fetch-wbgt` の起動はEventBridgeのcronルール `0 20,2,8 * * ? *`（UTC）= JST **5:00 / 11:00 / 17:00**。
   - **既知の時刻ズレ**: フロントの `getLatestWbgtDateTime()` は10:00〜16:59を `time:"10"` として扱うが、バックエンドの10時データ取得は実際には **JST 11:00** 実行のため、10:00〜11:00の間はS3の `latest.json` がまだ前回（5時 or 前日17時）データのままになる可能性がある。
 
@@ -87,8 +89,14 @@
 - `types/api.d.ts`: Open-Meteo由来の `HourlyForecast` / `DailyForecast`
 - `types/wbgt-api.d.ts`: 自前WBGT APIのレスポンス型
 
-## 既知の課題（リファクタ前の現状実装メモ）
+## 既知の課題（リファクタ中の現状メモ）
 
 - フロントの発表時刻判定（`getLatestWbgtDateTime`）とバックエンドのcronスケジュール（JST 5:00/11:00/17:00）の間に10時台のズレがある（前述）。
-- バックエンド（CDK）のソースがこのリポジトリに含まれておらず、運用・改修の見通しが悪い。
 - `weather-info.tsx` のグラフ描画はマジックナンバー（座標オフセット等）が多く、`react-native-chart-kit` の制約を手動調整で回避している。
+
+## リファクタ進行状況
+
+- [x] バックエンド（旧`wbgt-cdk`）をこのリポジトリの `backend/` に統合（git履歴は持たずコードのみ移植）。
+- [ ] バックエンド: S3履歴オブジェクトのライフサイクル設定、CloudWatch Alarm追加、ユニットテスト追加
+- [ ] フロント: 型定義の重複解消、TanStack Query導入、グラフライブラリ移行
+- [ ] 検証・最終ドキュメント反映
