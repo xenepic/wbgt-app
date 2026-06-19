@@ -85,9 +85,8 @@
 ## 型定義の方針
 
 - `types/global.d.ts`: 共通の `Result<T>` 型（成功/失敗の判別ユニオン）、`GeocodeResult`
-- `types/services.d.ts`: WBGT関連の型（`WbgtTime`, `WbgtData` など）— `wbgt-api.d.ts` と重複あり
 - `types/api.d.ts`: Open-Meteo由来の `HourlyForecast` / `DailyForecast`
-- `types/wbgt-api.d.ts`: 自前WBGT APIのレスポンス型
+- `types/wbgt-api.d.ts`: WBGT関連の型を一本化（`WbgtTime`, `WbgtData`, `WbgtMap`, `WbgtApiResponse`, `WeatherServiceWbgtResponse`）
 
 ## 既知の課題（リファクタ中の現状メモ）
 
@@ -97,6 +96,7 @@
 ## リファクタ進行状況
 
 - [x] バックエンド（旧`wbgt-cdk`）をこのリポジトリの `backend/` に統合（git履歴は持たずコードのみ移植）。
-- [ ] バックエンド: S3履歴オブジェクトのライフサイクル設定、CloudWatch Alarm追加、ユニットテスト追加
-- [ ] フロント: 型定義の重複解消、TanStack Query導入、グラフライブラリ移行
+- [x] バックエンド: S3履歴オブジェクトのライフサイクル設定（`wbgt/history/`配下90日）、CloudWatch Alarm追加、ユニットテスト追加、`cdk deploy`実施済み
+- [x] フロント: 型定義の重複解消（`WbgtTime`/`WbgtMap`/`WbgtData`を`wbgt-api.d.ts`に一本化、`types/services.d.ts`は削除）
+- [ ] フロント: TanStack Query導入、グラフライブラリ移行（react-native-gifted-chartsへ）
 - [ ] 検証・最終ドキュメント反映
