@@ -1,4 +1,5 @@
 // types/wbgt-api.d.ts
+type WbgtTime = "05" | "10" | "17";
 type WbgtMap = Record<string, number>;
 
 interface WbgtData {

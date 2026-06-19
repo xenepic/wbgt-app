@@ -1,9 +1,14 @@
-type Result<T> = { ok: true; data: T } | { ok: false; message: string };
+type HourlyForecast = {
+  time: string[];
+  temperature_2m: number[];
+  precipitation: number[];
+  weathercode: number[];
+};
 
-interface GeocodeResult {
-  coords: Location.LocationObjectCoords;
-  country: string;
-  pref: string;
-  city: string;
-  area: string;
-}
+type DailyForecast = {
+  time: string[];
+  temperature_2m_max: number[];
+  temperature_2m_min: number[];
+  precipitation_sum: number[];
+  weathercode: number[];
+};
