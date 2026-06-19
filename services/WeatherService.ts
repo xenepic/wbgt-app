@@ -1,9 +1,5 @@
 import * as api from "../api/api";
 import * as utils from "../utils/utils";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const WBGT_CACHE_KEY = "wbgt_latest";
-const WBGT_PUBLISH_TIME_CACHE_KEY = "wbgt_publish_time";
 
 function getWbgtFromCity(
   wbgtData: WbgtData[],
@@ -163,37 +159,5 @@ export class WeatherService {
     } else {
       return { ok: true, wbgt, publishedAtJst };
     }
-  }
-
-  /**
-   * Wbgtを取得する。失敗したときはキャッシュ値から取得する。
-   */
-  public static async fetchWbgtLatestWithCache(
-    pref: string,
-    city: string,
-    time: WbgtTime
-  ): Promise<WeatherServiceWbgtResponse> {
-    const result = await WeatherService.getWbgtLatest(pref, city, time);
-    if (result.ok) {
-      await AsyncStorage.setItem(WBGT_CACHE_KEY, JSON.stringify(result.wbgt));
-      await AsyncStorage.setItem(
-        WBGT_PUBLISH_TIME_CACHE_KEY,
-        JSON.stringify(result.publishedAtJst)
-      );
-      return result;
-    }
-    // 失敗時はキャッシュから復旧
-    const cachedWbgt = await AsyncStorage.getItem(WBGT_CACHE_KEY);
-    const cachedPublishedAtJst = await AsyncStorage.getItem(
-      WBGT_PUBLISH_TIME_CACHE_KEY
-    );
-    if (cachedWbgt && cachedPublishedAtJst) {
-      return {
-        ok: true,
-        wbgt: parseInt(JSON.parse(cachedWbgt)),
-        publishedAtJst: JSON.parse(cachedPublishedAtJst),
-      };
-    }
-    return result;
   }
 }

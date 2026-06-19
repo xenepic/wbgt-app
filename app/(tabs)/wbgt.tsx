@@ -8,58 +8,43 @@ import {
 } from "react-native";
 import * as utils from "../../utils/utils";
 import { GeoService } from "../../services/GeoService";
-import { WeatherService } from "../../services/WeatherService";
+import { useGeocode } from "@/hooks/useGeocode";
+import { useWbgtLatest } from "@/hooks/useWbgtLatest";
 
 export default function HomeScreen() {
-  const [locationPref, setLocationPref] = useState<string | null>(null);
-  const [wbgt, setWbgt] = useState<number | null>(null);
-  const [publishedAtJst, setPublishedAtJst] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      // 位置情報の使用権限チェック
-      const locationPermissionResult =
-        await GeoService.checkLocationPermission();
-      if (!locationPermissionResult.ok) {
-        setErrorMsg("位置情報の許可が必要です");
+      const result = await GeoService.checkLocationPermission();
+      if (!result.ok) {
+        setPermissionError(result.message);
         return;
       }
-
-      // 位置情報取得
-      const geocordResult = await GeoService.getGeocode();
-      if (!geocordResult.ok) {
-        setErrorMsg(geocordResult.message);
-        return;
-      }
-      const {
-        pref,
-        city,
-        // coords: { latitude, longitude },
-      } = geocordResult.data;
-
-      // 位置情報設定
-      setLocationPref(`${pref} ${city}`);
-
-      // 時刻取得
-      const { date, time } = utils.getLatestWbgtDateTime();
-
-      // WBGT情報取得
-      const wbgtResult = await WeatherService.fetchWbgtLatestWithCache(
-        pref,
-        city,
-        time
-      );
-      if (!wbgtResult.ok) {
-        setErrorMsg(wbgtResult.message);
-        return;
-      }
-
-      // WBGTと設定
-      setWbgt(wbgtResult.wbgt);
-      setPublishedAtJst(wbgtResult.publishedAtJst);
+      setPermissionGranted(true);
     })();
   }, []);
+
+  const geocodeQuery = useGeocode(permissionGranted);
+  const pref = geocodeQuery.data?.pref;
+  const city = geocodeQuery.data?.city;
+  const locationPref = pref && city ? `${pref} ${city}` : null;
+
+  const { time } = utils.getLatestWbgtDateTime();
+  const wbgtQuery = useWbgtLatest(pref, city, time);
+
+  const wbgt = wbgtQuery.data?.wbgt ?? null;
+  const publishedAtJst = wbgtQuery.data?.publishedAtJst ?? null;
+
+  const errorMsg =
+    permissionError ??
+    (geocodeQuery.isError ? (geocodeQuery.error as Error).message : null) ??
+    (wbgtQuery.isError ? (wbgtQuery.error as Error).message : null);
+
+  // 通信が失敗していても直前のデータ（react-queryの永続化キャッシュ）が残っていれば
+  // それを優先して表示し、裏で失敗している旨だけ小さく伝える
+  const isShowingStaleData = wbgtQuery.isError && wbgt !== null;
 
   const { level, color } =
     wbgt !== null
@@ -80,6 +65,11 @@ export default function HomeScreen() {
             <Text style={styles.wbgtValue}>{`WBGT ${wbgt}`}</Text>
             <Text style={styles.level}>{level}</Text>
             <Text style={styles.location}>{locationPref}</Text>
+            {isShowingStaleData && (
+              <Text style={styles.staleNotice}>
+                最新データの取得に失敗したため、前回取得したデータを表示しています
+              </Text>
+            )}
           </>
         ) : errorMsg ? (
           <Text style={styles.error}>{errorMsg}</Text>
@@ -154,5 +144,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#fc8474ff",
     textAlign: "center",
+  },
+  staleNotice: {
+    fontSize: 12,
+    color: "#ffffffcc",
+    marginTop: 16,
+    textAlign: "center",
+    paddingHorizontal: 24,
   },
 });
