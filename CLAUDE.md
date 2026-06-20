@@ -111,3 +111,5 @@
 - フロント: データ取得層をTanStack Queryに移行し、手動AsyncStorageキャッシュ実装を撤廃。
 - フロント: グラフ描画ライブラリを`react-native-chart-kit`から`react-native-gifted-charts`に移行し、手動オフセット計算（マジックナンバー）を撤廃。
 - フロント・バックエンドともにユニットテストを追加し、Expo Web版での画面表示・実APIとの結合動作を確認済み。
+
+Google Play Storeへの提出状況・残作業は [docs/release-status.md](./docs/release-status.md) を参照。
