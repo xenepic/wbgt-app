@@ -33,7 +33,7 @@ function getWbgtFromCity(
         values.length;
     }
 
-    return wbgt;
+    return Math.round(wbgt);
   } else {
     return null;
   }
