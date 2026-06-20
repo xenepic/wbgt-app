@@ -48,7 +48,9 @@
       "router": {},
       "eas": {
         "projectId": "5db9a98d-9142-48a6-a278-425f61c97156"
-      }
-    }
+      },
+      "apiBaseUrl": "https://xh4o6krnn2.execute-api.ap-northeast-1.amazonaws.com"
+    },
+    "owner": "hitode"
   }
 }
