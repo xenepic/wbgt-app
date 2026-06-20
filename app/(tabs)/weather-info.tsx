@@ -8,7 +8,7 @@ import { useHourlyWeather } from "@/hooks/useHourlyWeather";
 import { useDailyWeather } from "@/hooks/useDailyWeather";
 
 const CHART_HEIGHT = 200;
-const POINT_SPACING = 20; // 1時間データを何pxで表現するか（横密度）
+const POINT_SPACING = 36; // 1時間データを何pxで表現するか（横密度。日付ラベル"M/D"が収まる幅を確保）
 const Y_AXIS_LABEL_WIDTH = 36;
 const ICON_LABEL_WIDTH = 36;
 
@@ -20,6 +20,12 @@ function formatDate(s: string) {
   const dd = String(d.getDate()).padStart(2, "0");
   const w = YOUBI[d.getDay()];
   return `${mm}/${dd} (${w})`;
+}
+
+// グラフX軸の日付境界ラベル用（短縮形、横スペースが狭いため曜日は省略）
+function formatShortDate(s: string) {
+  const d = new Date(s + "T00:00:00");
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function weekendStyle(s: string) {
@@ -121,15 +127,19 @@ export default function WeatherDetailScreen() {
     return time.map((t, i) => {
       const isThreeHourly = i % 3 === 0;
       const hh = t.slice(11, 13);
+      const isDayBoundary = hh === "00";
       const label = isThreeHourly
-        ? hh === "00" && i !== 0
-          ? formatDate(t.split("T")[0])
+        ? isDayBoundary
+          ? formatShortDate(t.split("T")[0])
           : hh
         : "";
 
       return {
         value: temperature_2m[i],
         label,
+        showVerticalLine: isDayBoundary,
+        verticalLineColor: "#bbb",
+        verticalLineThickness: 1,
         dataPointLabelComponent: isThreeHourly
           ? () => (
               <HourlyIconLabel
@@ -151,12 +161,14 @@ export default function WeatherDetailScreen() {
         <LineChart
           data={chartData}
           height={CHART_HEIGHT}
+          overflowTop={40}
           spacing={POINT_SPACING}
           initialSpacing={8}
           color="rgb(255,99,132)"
           thickness={2}
           curved
-          hideDataPoints
+          dataPointsRadius={0}
+          dataPointsColor="transparent"
           yAxisOffset={yAxis.yAxisOffset}
           maxValue={yAxis.maxValue}
           noOfSections={yAxis.noOfSections}
