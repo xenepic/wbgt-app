@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>プライバシーポリシー | WBGTアプリ</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", sans-serif;
+    line-height: 1.8;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+    color: #222;
+  }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.2rem; margin-top: 2em; border-left: 4px solid #4CAF50; padding-left: 0.5em; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; font-size: 0.95em; }
+  th { background: #f5f5f5; }
+  .updated { color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>プライバシーポリシー（WBGTアプリ）</h1>
+<p class="updated">最終更新日: 2026年6月20日</p>
+
+<p>
+本アプリ「WBGTアプリ」（以下「本アプリ」）は、個人開発者（以下「開発者」）が提供する、現在地の暑さ指数（WBGT）および気象情報を表示するアプリケーションです。
+本ポリシーは、本アプリの利用にあたって取得する情報とその取り扱いについて説明します。
+</p>
+
+<h2>1. 取得する情報</h2>
+<table>
+  <tr><th>情報の種類</th><th>取得目的</th><th>取得方法</th></tr>
+  <tr>
+    <td>位置情報（GPSによる緯度・経度、おおよその現在地）</td>
+    <td>現在地の暑さ指数（WBGT）・気象情報を判定し表示するため</td>
+    <td>端末の位置情報サービス（OSの位置情報許可）</td>
+  </tr>
+</table>
+
+<p>
+本アプリは、上記以外の個人情報（氏名・メールアドレス・電話番号等）を取得しません。アカウント登録機能もありません。
+</p>
+
+<h2>2. 位置情報の利用・送信先</h2>
+<p>
+取得した位置情報（緯度・経度）は、以下の目的にのみ使用されます。
+</p>
+<ul>
+  <li>
+    端末上で都道府県・市区町村名に変換（逆ジオコーディング、OSの機能を利用）し、暑さ指数（WBGT）の表示地域を判定します。この処理は端末内で行われ、開発者のサーバーに位置情報そのものが送信されることはありません。
+  </li>
+  <li>
+    気象情報（気温・降水量・週間予報）の取得のため、緯度・経度を外部サービスである <strong>Open-Meteo</strong>（<a href="https://open-meteo.com/" target="_blank" rel="noopener">https://open-meteo.com/</a>）に送信します。Open-Meteoでの情報の取り扱いについては、Open-Meteo社のプライバシーポリシーをご確認ください。
+  </li>
+</ul>
+<p>
+開発者が運用する自前サーバー（暑さ指数データの配信用）は、位置情報を含むリクエストを受け取らず、全国分のデータを返すのみです。地域の判定は端末内で行われます。
+</p>
+
+<h2>3. 情報の保存</h2>
+<p>
+取得した位置情報および表示用に取得した気象データは、通信状況が悪い場合に直前の表示内容を再表示するため、端末内のローカルストレージにのみ一時的に保存されます。これらの情報が開発者のサーバーや第三者に保存されることはありません。
+</p>
+
+<h2>4. 第三者への提供</h2>
+<p>
+本アプリは、広告配信・アクセス解析等の第三者SDKを組み込んでいません。前述のOpen-Meteo（気象データ取得のため）を除き、取得した情報を第三者に提供することはありません。
+</p>
+
+<h2>5. 利用する外部サービス</h2>
+<ul>
+  <li>Open-Meteo（気象データ取得） - <a href="https://open-meteo.com/" target="_blank" rel="noopener">https://open-meteo.com/</a></li>
+  <li>環境省 熱中症予防情報サイト（暑さ指数データの出典、開発者サーバー経由で配信） - <a href="https://www.wbgt.env.go.jp/" target="_blank" rel="noopener">https://www.wbgt.env.go.jp/</a></li>
+</ul>
+
+<h2>6. お子様の利用について</h2>
+<p>
+本アプリは年齢を問わずご利用いただけますが、個人を識別する情報は取得していません。
+</p>
+
+<h2>7. 本ポリシーの変更</h2>
+<p>
+本ポリシーの内容は、法令の変更やアプリの機能追加に応じて、予告なく変更することがあります。変更後の内容は本ページにて公開します。
+</p>
+
+<h2>8. お問い合わせ</h2>
+<p>
+本ポリシーに関するお問い合わせは、以下の連絡先までお願いします。
+</p>
+<p>連絡先: xenepic.takku@gmail.com</p>
+
+</body>
+</html>
