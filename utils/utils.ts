@@ -56,6 +56,22 @@ export const getWbgtLevel = (value: number) => {
   return { level: "危険", color: "#9C27B0" }; // 紫
 };
 
+/**
+ * 背景色の明度から、ステータスバーの見やすいスタイルを判定する。
+ * 明るい背景には濃色アイコン（"dark"）、暗い背景には白色アイコン（"light"）を返す。
+ * @param hexColor "#rrggbb" 形式の背景色
+ */
+export const getStatusBarStyle = (hexColor: string): "light" | "dark" => {
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+
+  // NTSC輝度近似式。0.5以上なら明るい背景とみなす。
+  const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luma >= 0.5 ? "dark" : "light";
+};
+
 export const getForecastLabel = (): string => {
   const now = new Date();
   const { time } = getLatestWbgtDateTime();

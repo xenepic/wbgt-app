@@ -90,6 +90,21 @@ describe("getWbgtLevel", () => {
   });
 });
 
+describe("getStatusBarStyle", () => {
+  test.each([
+    ["#686868", "light"], // 初期表示の灰色（やや暗い）
+    ["#4CAF50", "dark"], // 安全（緑）
+    ["#FFEB3B", "dark"], // 注意（黄）
+    ["#FF9800", "dark"], // 警戒（オレンジ）
+    ["#F44336", "light"], // 厳重警戒（赤）
+    ["#9C27B0", "light"], // 危険（紫）
+    ["#FFFFFF", "dark"],
+    ["#000000", "light"],
+  ])("背景色=%s のときステータスバーは%s", (color, expected) => {
+    expect(utils.getStatusBarStyle(color)).toBe(expected);
+  });
+});
+
 describe("getForecastLabel", () => {
   test("当日5時発表分（time=05）は「本日」", () => {
     mockNow("2025-08-10T07:00:00");

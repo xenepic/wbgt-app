@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import * as utils from "../../utils/utils";
 import { GeoService } from "../../services/GeoService";
 import { useGeocode } from "@/hooks/useGeocode";
@@ -53,6 +54,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: color }]}>
+      <StatusBar style={utils.getStatusBarStyle(color)} />
       {/* ヘッダー */}
       <View style={styles.header}>
         <Text style={styles.heading}>{utils.getForecastLabel()}</Text>

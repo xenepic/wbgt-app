@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { LineChart } from "react-native-gifted-charts";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useGeocode } from "@/hooks/useGeocode";
@@ -86,6 +87,32 @@ export default function WeatherDetailScreen() {
     ? (dailyQuery.error as Error).message
     : null;
 
+  const yAxis = useMemo(() => {
+    if (!hourlyData) return { yAxisOffset: 0, maxValue: 10, noOfSections: 5 };
+
+    const temps = hourlyData.temperature_2m;
+    const margin = 2; // 最低/最高の周囲に余白として数度確保する
+    const dataMin = Math.min(...temps);
+    const dataMax = Math.max(...temps);
+
+    const niceStep = (roughStep: number) => {
+      const pow10 = Math.pow(10, Math.floor(Math.log10(roughStep)));
+      const n = roughStep / pow10;
+      const base = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+      return base * pow10;
+    };
+
+    const desiredSections = 5;
+    const rawMin = dataMin - margin;
+    const rawMax = dataMax + margin;
+    const step = niceStep((rawMax - rawMin) / desiredSections) || 1;
+
+    const yAxisOffset = Math.floor(rawMin / step) * step;
+    const noOfSections = Math.ceil((rawMax - yAxisOffset) / step);
+
+    return { yAxisOffset, maxValue: step * noOfSections, noOfSections };
+  }, [hourlyData]);
+
   const chartData = useMemo(() => {
     if (!hourlyData) return [];
 
@@ -130,6 +157,9 @@ export default function WeatherDetailScreen() {
           thickness={2}
           curved
           hideDataPoints
+          yAxisOffset={yAxis.yAxisOffset}
+          maxValue={yAxis.maxValue}
+          noOfSections={yAxis.noOfSections}
           yAxisLabelWidth={Y_AXIS_LABEL_WIDTH}
           yAxisTextStyle={styles.yTickText}
           yAxisLabelSuffix="℃"
@@ -178,6 +208,7 @@ export default function WeatherDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <StatusBar style="dark" />
       <Text style={styles.title}>気象詳細情報</Text>
       <Text style={styles.subtitle}>{location}</Text>
 
