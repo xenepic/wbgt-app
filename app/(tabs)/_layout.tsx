@@ -17,7 +17,9 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[theme].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
+        // expo-router @ SDK56時点で、内部同梱のBottomTabBarButtonProps型が
+        // @react-navigation/bottom-tabsの実体（pressColorの型がColorValue/string違い）と食い違うための回避キャスト
+        tabBarButton: HapticTab as any,
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
