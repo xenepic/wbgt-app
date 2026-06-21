@@ -1,5 +1,12 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  useWindowDimensions,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { LineChart } from "react-native-gifted-charts";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -8,9 +15,12 @@ import { useHourlyWeather } from "@/hooks/useHourlyWeather";
 import { useDailyWeather } from "@/hooks/useDailyWeather";
 
 const CHART_HEIGHT = 200;
-const POINT_SPACING = 36; // 1時間データを何pxで表現するか（横密度。日付ラベル"M/D"が収まる幅を確保）
+const CONTAINER_HORIZONTAL_PADDING = 16;
+const HOURS_VISIBLE = 24; // 一度に表示する範囲（1日分）
+const MIN_POINT_SPACING = 16;
 const Y_AXIS_LABEL_WIDTH = 36;
 const ICON_LABEL_WIDTH = 36;
+const NOW_LINE_COLOR = "#e53935";
 
 const YOUBI = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -57,12 +67,15 @@ function weatherCodeToIcon(code: number) {
 function HourlyIconLabel({
   precip,
   temp,
+  isNow,
 }: {
   precip: number;
   temp: number;
+  isNow?: boolean;
 }) {
   return (
     <View style={[styles.precipItem, { width: ICON_LABEL_WIDTH }]}>
+      {isNow && <Text style={styles.nowText}>現在</Text>}
       <MaterialCommunityIcons
         name={precipToIcon(precip, temp) as any}
         size={18}
@@ -73,7 +86,43 @@ function HourlyIconLabel({
   );
 }
 
+function NowLabel() {
+  return (
+    <View style={[styles.precipItem, { width: ICON_LABEL_WIDTH }]}>
+      <Text style={styles.nowText}>現在</Text>
+    </View>
+  );
+}
+
+// hourlyData.time（"YYYY-MM-DDTHH:00"、Open-MeteoのAsia/Tokyoタイムゾーン指定によりJSTのローカル時刻文字列）の中から
+// 現在時刻に最も近いインデックスを探す。デバイスがJST設定であることを前提とする（他のJST前提ロジックと同様）。
+function findNowIndex(time: string[]): number {
+  if (time.length === 0) return -1;
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const nowKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+    now.getDate()
+  )}T${pad(now.getHours())}`;
+
+  const exact = time.findIndex((t) => t.startsWith(nowKey));
+  if (exact !== -1) return exact;
+
+  // 完全一致がない場合は、現在時刻を超える最初の点の手前を採用する
+  const next = time.findIndex((t) => t > nowKey);
+  return next === -1 ? time.length - 1 : Math.max(0, next - 1);
+}
+
 export default function WeatherDetailScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const pointSpacing = Math.max(
+    MIN_POINT_SPACING,
+    Math.floor(
+      (windowWidth - CONTAINER_HORIZONTAL_PADDING * 2 - Y_AXIS_LABEL_WIDTH) /
+        HOURS_VISIBLE
+    )
+  );
+
   const geocodeQuery = useGeocode(true);
   const coords = geocodeQuery.data?.coords;
   const location =
@@ -119,6 +168,11 @@ export default function WeatherDetailScreen() {
     return { yAxisOffset, maxValue: step * noOfSections, noOfSections };
   }, [hourlyData]);
 
+  const nowIndex = useMemo(
+    () => (hourlyData ? findNowIndex(hourlyData.time) : -1),
+    [hourlyData]
+  );
+
   const chartData = useMemo(() => {
     if (!hourlyData) return [];
 
@@ -126,6 +180,7 @@ export default function WeatherDetailScreen() {
 
     return time.map((t, i) => {
       const isThreeHourly = i % 3 === 0;
+      const isNow = i === nowIndex;
       const hh = t.slice(11, 13);
       const isDayBoundary = hh === "00";
       const label = isThreeHourly
@@ -137,20 +192,24 @@ export default function WeatherDetailScreen() {
       return {
         value: temperature_2m[i],
         label,
-        showVerticalLine: isDayBoundary,
-        verticalLineColor: "#bbb",
-        verticalLineThickness: 1,
+        showVerticalLine: isDayBoundary || isNow,
+        verticalLineColor: isNow ? NOW_LINE_COLOR : "#bbb",
+        verticalLineThickness: isNow ? 2 : 1,
+        verticalLineZIndex: isNow ? 10 : undefined,
         dataPointLabelComponent: isThreeHourly
           ? () => (
               <HourlyIconLabel
                 precip={precipitation[i]}
                 temp={temperature_2m[i]}
+                isNow={isNow}
               />
             )
+          : isNow
+          ? () => <NowLabel />
           : undefined,
       };
     });
-  }, [hourlyData]);
+  }, [hourlyData, nowIndex]);
 
   const renderHourlyChart = () => {
     if (!hourlyData) return null;
@@ -162,7 +221,7 @@ export default function WeatherDetailScreen() {
           data={chartData}
           height={CHART_HEIGHT}
           overflowTop={40}
-          spacing={POINT_SPACING}
+          spacing={pointSpacing}
           initialSpacing={8}
           color="rgb(255,99,132)"
           thickness={2}
@@ -180,6 +239,8 @@ export default function WeatherDetailScreen() {
           xAxisColor="#ddd"
           yAxisColor="#ddd"
           dataPointLabelShiftY={-10}
+          scrollToIndex={nowIndex > 0 ? nowIndex : undefined}
+          scrollAnimation={false}
         />
       </View>
     );
@@ -275,6 +336,12 @@ const styles = StyleSheet.create({
   // グラフ上のアイコンラベル
   precipItem: { alignItems: "center", justifyContent: "center" },
   precipText: { fontSize: 10, color: "#666", marginTop: 2 },
+  nowText: {
+    fontSize: 10,
+    color: NOW_LINE_COLOR,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
 
   yTickText: { fontSize: 11, color: "#666" },
   xTickText: { fontSize: 11, color: "#666" },
